@@ -16,8 +16,11 @@ void setup() {
     USC0(UART0) = USC0(UART0) | BIT(UCRXI);
     Serial.println("Serial port is ready to recieve.");
 
+    String hostname = "ESP-P1-POWER-" + WiFi.macAddress(); // allow for multiple esp-p1-power on the network
+    hostname.replace(":", "");
+    WiFi.persistent(false);
     WiFi.mode(WIFI_STA);
-    Serial.println(WiFi.hostname("ESP-P1-POWER"));
+    WiFi.hostname(hostname.c_str());
     WiFi.begin(WIFI_ACCESPOINT, WIFI_PASSWORD);
     for (int i = 0 ; i < 20; i++) {
         if (WiFi.status() == WL_CONNECTED) {
