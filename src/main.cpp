@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
 #include "secrets.h"
 
@@ -7,14 +8,12 @@ WiFiClient current_client;
 
 #define IDEAL_PACKET_SIZE 1024
 void setup() {
+    // we start a serial, but invert it
+    Serial.begin(115200, SERIAL_8N1, SERIAL_RX_ONLY, 1, true);
     // we use the internal buffer of the serial class and send from that when we can
     // assuming we can send out TCP packets fast enough to not let it overflow
     Serial.setRxBufferSize(IDEAL_PACKET_SIZE * 8);
-    Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
     Serial.setDebugOutput(false);
-    // Invert the RX serialport by setting a register value, this way the TX might continue normally allowing the serial monitor to read println's
-    USC0(UART0) = USC0(UART0) | BIT(UCRXI);
-    Serial.println("Serial port is ready to recieve.");
 
     String hostname = "ESP-P1-POWER-" + WiFi.macAddress(); // allow for multiple esp-p1-power on the network
     hostname.replace(":", "");
@@ -29,15 +28,20 @@ void setup() {
         Serial.println("No WIFI connection yet");
         delay(500);
     }
-    Serial.println("Starting server");
     server.begin();
     server.setNoDelay(true);
+
+    ArduinoOTA.setPassword("MONITOR_POWER_42");
+    ArduinoOTA.setHostname(hostname.c_str());
+    ArduinoOTA.begin();
 }
 
 unsigned long lastUpdate = 0;
+unsigned long lastOTACheck = 0;
 
 void loop() {
     auto now = millis();
+
     auto available = Serial.peekAvailable();
     if (available >= IDEAL_PACKET_SIZE || (available > 0 && (now - lastUpdate) > 50)) {
         auto buffer = Serial.peekBuffer();
@@ -54,5 +58,12 @@ void loop() {
         current_client.stop();
         current_client = server.available();
     }
-    delay(1);
+
+    if (now - lastOTACheck > 1000) {
+        ArduinoOTA.handle();
+        lastOTACheck = now;
+    }
+    else {
+        delay(1);
+    }
 }
