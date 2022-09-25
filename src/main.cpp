@@ -1,7 +1,17 @@
 #include <Arduino.h>
+#ifdef OTA
 #include <ArduinoOTA.h>
+#endif
 #include <ESP8266WiFi.h>
 #include "secrets.h"
+
+#ifndef SERIAL_RATE
+#define SERIAL_RATE 115200
+#endif
+
+#ifndef SERIAL_BITS
+#define SERIAL_BITS SERIAL_8N1
+#endif
 
 WiFiServer server(23);
 WiFiClient current_client;
@@ -9,7 +19,7 @@ WiFiClient current_client;
 #define IDEAL_PACKET_SIZE 1024
 void setup() {
     // we start a serial, but invert it
-    Serial.begin(115200, SERIAL_8N1, SERIAL_RX_ONLY, 1, true);
+    Serial.begin(SERIAL_RATE, SERIAL_BITS, SERIAL_RX_ONLY, 1, true);
     // we use the internal buffer of the serial class and send from that when we can
     // assuming we can send out TCP packets fast enough to not let it overflow
     Serial.setRxBufferSize(IDEAL_PACKET_SIZE * 8);
@@ -31,13 +41,17 @@ void setup() {
     server.begin();
     server.setNoDelay(true);
 
+#ifdef OTA
     ArduinoOTA.setPassword("MONITOR_POWER_42");
     ArduinoOTA.setHostname(hostname.c_str());
     ArduinoOTA.begin();
+#endif
 }
 
 unsigned long lastUpdate = 0;
+#ifdef OTA
 unsigned long lastOTACheck = 0;
+#endif
 
 void loop() {
     auto now = millis();
@@ -58,12 +72,15 @@ void loop() {
         current_client.stop();
         current_client = server.available();
     }
-
+#ifdef OTA
     if (now - lastOTACheck > 1000) {
         ArduinoOTA.handle();
         lastOTACheck = now;
     }
     else {
-        delay(1);
+        delay(10);
     }
+#else
+    delay(10);
+#endif
 }
