@@ -47,6 +47,8 @@ void setup() {
     }
     server.begin();
     server.setNoDelay(true);
+    ArduinoOTA.setPassword("MONITOR_POWER_42");
+    ArduinoOTA.setHostname(hostname.c_str());
     ArduinoOTA.begin();
     
 }
